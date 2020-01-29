@@ -46,38 +46,40 @@ type handler struct {
 }
 
 func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	path := strings.TrimSpace(r.URL.Path)
+	// Parsing the path section
 
-	// If there is not specific path matched
-	// It will just take you to the intro chapter
+	// Get the path from the url and check to see
+	// if the path equals to empty string or slash,
+	// redirect it to the intro page
+	path := strings.TrimSpace(r.URL.Path)
 	if path == "" || path == "/" {
 		path = "/intro"
 	}
-	// It says give us the path without the prefix "/"
+	// get the path by slicing the /
 	// "/intro" --> "intro"
 	path = path[1:]
 
-	// The first argument returned is gonna be the actual object stored in the map
-	// the second argument is whether or not we found that actual key in the map
+	// The first argument returned is going to be the actual object stored in the map; The chapter
+	// The second argument is whether or not it actually find the key inside the map
 	if chapter, ok := h.s[path]; ok {
 		err := tpl.Execute(w, chapter)
 		if err != nil {
-			// This log err part is only visible to the developer. Not the end user
+			// Log the error to get to know what the actual error is about
 			log.Printf("%v", err)
-			
-			// The following code is fine for development
-			// So that we know what's happening with the error
-			// http.Error(w, err, http.StatusFound)
 
-			// No need to display the actual error to the end user
-			// Because sometimes the err contains sensitive information
-			// Such as password, etc. So in that case display some generic
-			// error message
+			// Sometimes the developer would print the error message as is
+			// just to know what the actual error is and it's fine for
+			// the development phase; not for build phase. re: the following code
+			// http.Error(w, err, http.StatusInternalServerError)
+
+			// The reason why the error message is quite generic because
+			// sometimes it contains sensitive data within the returned error
+			// for example is like password etc etc
 			http.Error(w, "Something went wrong...", http.StatusInternalServerError)
 		}
 		return
 	}
-	http.Error(w, "Chapter Not Found", http.StatusNotFound)
+	http.Error(w, "Chapter not found.", http.StatusNotFound)
 }
 
 // Decode the opened/chosen json file and stores it into story variable
@@ -100,5 +102,5 @@ type Chapter struct {
 
 type Option struct {
 	Text string `json:"text"`
-	Chapter  string `json:"chapter"`
+	Chapter  string `json:"arc"`
 }
