@@ -35,17 +35,40 @@ var defaultHandlerTemplate = `
 	{{end}}
     </ul>
 </body>
-</html>`
+</html>` 
 
-func NewHandler(s Story) http.Handler {
-	return handler{s}
+type HandlerOption func(h *handler)
+
+func WithTemplate(t *template.Template) HandlerOption {
+	return func (h *handler)  {
+		h.t = t
+	}
+}
+
+func WithPathFunc(fn func(r *http.Request) string) HandlerOption {
+	return func (h *handler)  {
+		h.pathFn = fn
+	}
+}
+
+func NewHandler(s Story, opts ...HandlerOption) http.Handler {
+	h := handler{s, tpl, defaultPathFn}
+	for _, opt := range opts {
+		opt(&h)
+	}
+	return h
 }
 
 type handler struct {
 	s Story
+	t *template.Template
+	pathFn func(r *http.Request) string
+	
+	// Make the handler a bit more dynamic.
+	// A bit more open to having some custom options.
 }
 
-func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+func defaultPathFn(r *http.Request) string  {
 	// Parsing the path section
 
 	// Get the path from the url and check to see
@@ -57,12 +80,15 @@ func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	// get the path by slicing the /
 	// "/intro" --> "intro"
-	path = path[1:]
+	return path[1:]
+}
 
+func (h handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	path := h.pathFn(r)
 	// The first argument returned is going to be the actual object stored in the map; The chapter
 	// The second argument is whether or not it actually find the key inside the map
 	if chapter, ok := h.s[path]; ok {
-		err := tpl.Execute(w, chapter)
+		err := h.t.Execute(w, chapter)
 		if err != nil {
 			// Log the error to get to know what the actual error is about
 			log.Printf("%v", err)
